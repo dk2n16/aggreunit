@@ -1,3 +1,4 @@
+from aggreunit.util_functions import dissolve_admin_units
 from pathlib import Path
 
 import geopandas as gpd
@@ -7,7 +8,7 @@ from pandas.testing import assert_frame_equal
 import pytest
 import rasterio
 
-from aggreunit import raster_to_polygon, join_population_to_shp, get_pop_density, get_labels, aggr_table, sort_by_density, aggr_constrained_shp
+from aggreunit import raster_to_polygon, join_population_to_shp, get_pop_density, get_labels, aggr_table, sort_by_density, aggr_constrained_shp, rasterize, save_shapefile, dissolve_admin_units
 
 BASE = Path(__file__).resolve().parent.joinpath('data')
 
@@ -23,6 +24,7 @@ L1_SHP = L1.parent.joinpath(f'{L1.stem}.shp')
 L1_CONSTR_SHP = L1.parent.joinpath(f'{L1_CONSTR.stem}.shp')
 TABLE_AGGR = TABLE.parent.joinpath(f'{TABLE.stem}_A.csv')
 L1_SHP_AGGR = L1.parent.joinpath(f'{L1_SHP.stem}_A.shp')
+L1_A = L1.parent.joinpath(f'{L1.stem}_A.tif')
 
 #---------------OUTPUT--------------------
 
@@ -119,7 +121,7 @@ def test_aggr_constrained_shp(poly):
     aggr_constr_gdf = aggr_constrained_shp(unconstr_gdf, const_gdf)
     assert len(aggr_constr_gdf) == len(unconstr_gdf.labels.unique())
 
-def test_dissolve_adm_units(poly):
+def test_aggr_constrained_shp(poly):
     if L1_CONSTR_SHP.exists():
         [x.unlink() for x in BASE.iterdir() if x.stem == L1_CONSTR.stem if not x == L1_CONSTR]
     gdf_pop = join_population_to_shp(poly, TABLE)
@@ -130,5 +132,43 @@ def test_dissolve_adm_units(poly):
     aggr_constr_gdf = aggr_constrained_shp(unconstr_gdf, const_gdf)
     assert len(aggr_constr_gdf) == len(unconstr_gdf.labels.unique())
 
+def test_dissolve_admin_units(gdf):
+    if L1_CONSTR_SHP.exists():
+        [x.unlink() for x in BASE.iterdir() if x.stem == L1_CONSTR.stem if not x == L1_CONSTR]
+    gdf_pop = join_population_to_shp(poly, TABLE)
+    gdf_density = get_pop_density(gdf_pop, PIXEL, L1_SHP)
+    gdf_sorted = sort_by_density(gdf_density)
+    unconstr_gdf = get_labels(gdf_sorted)
+    gdf_diss = dissolve_admin_units(unconstr_gdf)
+    assert len(gdf_diss) < len(unconstr_gdf)
 
+
+
+def test_save_shapefile(poly):
+    if L1_CONSTR_SHP.exists():
+        [x.unlink() for x in BASE.iterdir() if x.stem == L1_CONSTR.stem if not x == L1_CONSTR]
+    gdf_pop = join_population_to_shp(poly, TABLE)
+    gdf_density = get_pop_density(gdf_pop, PIXEL, L1_SHP)
+    gdf_sorted = sort_by_density(gdf_density)
+    unconstr_gdf = get_labels(gdf_sorted)
+    gdf_diss = dissolve_admin_units(unconstr_gdf)
+    save_shapefile(gdf_diss, L1_SHP_AGGR)
+    gdf = gpd.read_file(L1_SHP_AGGR)
+    assert len(gdf) == len(gdf_diss)
+
+
+def test_rasterize():
+    gdf = gpd.read_file(L1_SHP_AGGR)
+    src = rasterio.open(L1)
+    profile = src.profile
+    rasterize(gdf, L1, L1_A)
+    src = rasterio.open(L1_A)
+    profile_ = src.profile
+    assert profile_['height'] == profile['height']
+    assert profile_['width'] == profile['width']
+    data = src.read()
+    src.close()
+    units = list(np.unique(data[data != profile['nodata']]))
+    assert len(gdf) == len(units)
+    assert 0 in units
 

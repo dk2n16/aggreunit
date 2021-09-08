@@ -13,6 +13,7 @@ with warnings.catch_warnings():
 import rasterio
 from rasterio.features import shapes
 
+from .rasterize_geoms import RasterizeAdminUnits
 
 def raster_to_polygon(raster, out_shp=None):
     """
@@ -170,6 +171,9 @@ def get_labels(gdf):
                     gdf.at[i, 'labels'] = index
                     paired = True
                     break
+    gdf_water['paired'] = True
+    gdf_water['lable'] = 0
+    gdf = gpd.GeoDataFrame(pd.concat([gdf, gdf_water]))
     return gdf
 
 def aggr_table(csv, gdf, out_csv, pop_col='P_2020', index_col='GID'):
@@ -243,4 +247,31 @@ def dissolve_admin_units(gdf):
     gdf['adm_id'] = gdf['labels']
     gdf = gdf.dissolve(by='adm_id')
     return gdf
+
+def save_shapefile(gdf, outname):
+	"""Save shapefile to outname
+    
+    Parameters:
+    -----------
+    gdf :   (gpd.GeoDataFrame)
+        Dataframe to save
+    outname :   (Path/str)
+        Path to same outfile
+    """
+	gdf.to_file(outname)
+
+
+def rasterize(gdf, raster, out_name):
+    """
+    Rasterises gdf and saves to outname
+
+    Parameters:
+    ------------
+    gdf :   (gpd.GeoDataFrame)
+        Geodataframe to rasterise
+    raster  :   (Path/str)
+        Path to raster to be used as snap/extent template
+    """
+    gdf = gdf.reset_index()
+    rasterise = RasterizeAdminUnits(gdf, raster, out_name).rasterize_geometries()
 
