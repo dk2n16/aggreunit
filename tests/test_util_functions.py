@@ -1,4 +1,3 @@
-from aggreunit.util_functions import sort_by_density
 from pathlib import Path
 
 import geopandas as gpd
@@ -8,18 +7,22 @@ from pandas.testing import assert_frame_equal
 import pytest
 import rasterio
 
-from aggreunit import raster_to_polygon, join_population_to_shp, get_pop_density
+from aggreunit import raster_to_polygon, join_population_to_shp, get_pop_density, get_labels, aggr_table, sort_by_density, aggr_constrained_shp
 
 BASE = Path(__file__).resolve().parent.joinpath('data')
 
 #----------------INPUT------------------
 L1 = BASE.joinpath('abw_subnational_admin_2000_2020.tif')
+L1_CONSTR = BASE.joinpath('abw_L1_constrained.tif')
 TABLE = BASE.joinpath('abw_population_2000_2020.csv')
 PIXEL = BASE.joinpath('abw_px_area_100m.tif')
 #----------------INPUT------------------
 
 #---------------OUTPUT--------------------
 L1_SHP = L1.parent.joinpath(f'{L1.stem}.shp')
+L1_CONSTR_SHP = L1.parent.joinpath(f'{L1_CONSTR.stem}.shp')
+TABLE_AGGR = TABLE.parent.joinpath(f'{TABLE.stem}_A.csv')
+L1_SHP_AGGR = L1.parent.joinpath(f'{L1_SHP.stem}_A.shp')
 
 #---------------OUTPUT--------------------
 
@@ -32,6 +35,7 @@ def poly():
 
 def test_files_exist():
     assert L1.exists()
+    assert L1_CONSTR.exists()
     assert TABLE.exists()
     assert PIXEL.exists()
 
@@ -76,16 +80,55 @@ def test_sort_by_density(poly):
     gdf_pop = join_population_to_shp(poly, TABLE)
     gdf_density = get_pop_density(gdf_pop, PIXEL, L1_SHP)
     gdf_sorted = sort_by_density(gdf_density)
+    gdf_sorted.to_file(L1_SHP.parent.joinpath('test.shp'))
     expected = sorted(gdf_density.density.to_list(), reverse=True)
     expected = [x for x in expected if not str(x) == 'nan']
     got = gdf_sorted.density.to_list()
-    got = [x for x in got if not str(x) == 'nan']
-    print('expected:  ', expected)
-    print('got:  ', got)
+    got = [x for x in got if not str(x) == 'nan'] #remove water polygon values (nan)
     assert expected[1] == got[1]
     assert expected[5] == got[5]
     assert expected[-1] == got[-1]
     
+
+def test_get_labels(poly):
+    gdf_pop = join_population_to_shp(poly, TABLE)
+    gdf_density = get_pop_density(gdf_pop, PIXEL, L1_SHP)
+    gdf_sorted = sort_by_density(gdf_density)
+    gdf_labelled = get_labels(gdf_sorted)
+    parent_poly_expected = 53351 #Most dense ID (manually checked)
+    child_poly_expected = 53354 #Most dense neighbour to 53351 (manually checked)
+    assert gdf_labelled.at[child_poly_expected, 'labels'] == parent_poly_expected
+
+def test_aggr_table(poly):
+    gdf_pop = join_population_to_shp(poly, TABLE)
+    gdf_density = get_pop_density(gdf_pop, PIXEL, L1_SHP)
+    gdf_sorted = sort_by_density(gdf_density)
+    gdf_labelled = get_labels(gdf_sorted)
+    aggr_table(TABLE, gdf_labelled, TABLE_AGGR)
+    aggr_df = pd.read_csv(TABLE_AGGR)
+    assert len(aggr_df) == len(gdf_labelled.labels.unique())
+
+def test_aggr_constrained_shp(poly):
+    if L1_CONSTR_SHP.exists():
+        [x.unlink() for x in BASE.iterdir() if x.stem == L1_CONSTR.stem if not x == L1_CONSTR]
+    gdf_pop = join_population_to_shp(poly, TABLE)
+    gdf_density = get_pop_density(gdf_pop, PIXEL, L1_SHP)
+    gdf_sorted = sort_by_density(gdf_density)
+    unconstr_gdf = get_labels(gdf_sorted)
+    const_gdf = raster_to_polygon(L1_CONSTR, L1_CONSTR_SHP)
+    aggr_constr_gdf = aggr_constrained_shp(unconstr_gdf, const_gdf)
+    assert len(aggr_constr_gdf) == len(unconstr_gdf.labels.unique())
+
+def test_dissolve_adm_units(poly):
+    if L1_CONSTR_SHP.exists():
+        [x.unlink() for x in BASE.iterdir() if x.stem == L1_CONSTR.stem if not x == L1_CONSTR]
+    gdf_pop = join_population_to_shp(poly, TABLE)
+    gdf_density = get_pop_density(gdf_pop, PIXEL, L1_SHP)
+    gdf_sorted = sort_by_density(gdf_density)
+    unconstr_gdf = get_labels(gdf_sorted)
+    const_gdf = raster_to_polygon(L1_CONSTR, L1_CONSTR_SHP)
+    aggr_constr_gdf = aggr_constrained_shp(unconstr_gdf, const_gdf)
+    assert len(aggr_constr_gdf) == len(unconstr_gdf.labels.unique())
 
 
 
