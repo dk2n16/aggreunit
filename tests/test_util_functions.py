@@ -108,7 +108,8 @@ def test_aggr_table(poly):
     gdf_labelled = get_labels(gdf_sorted)
     aggr_table(TABLE, gdf_labelled, TABLE_AGGR)
     aggr_df = pd.read_csv(TABLE_AGGR)
-    assert len(aggr_df) == len(gdf_labelled.labels.unique())
+    assert len(aggr_df) == len(gdf_labelled.labels.unique()) -1 #remove water rows
+
 
 def test_aggr_constrained_shp(poly):
     if L1_CONSTR_SHP.exists():
@@ -119,20 +120,11 @@ def test_aggr_constrained_shp(poly):
     unconstr_gdf = get_labels(gdf_sorted)
     const_gdf = raster_to_polygon(L1_CONSTR, L1_CONSTR_SHP)
     aggr_constr_gdf = aggr_constrained_shp(unconstr_gdf, const_gdf)
-    assert len(aggr_constr_gdf) == len(unconstr_gdf.labels.unique())
+    labels = unconstr_gdf.labels.unique()
+    #labels = labels[labels != 0]
+    assert len(aggr_constr_gdf) == len(labels) -1
 
-def test_aggr_constrained_shp(poly):
-    if L1_CONSTR_SHP.exists():
-        [x.unlink() for x in BASE.iterdir() if x.stem == L1_CONSTR.stem if not x == L1_CONSTR]
-    gdf_pop = join_population_to_shp(poly, TABLE)
-    gdf_density = get_pop_density(gdf_pop, PIXEL, L1_SHP)
-    gdf_sorted = sort_by_density(gdf_density)
-    unconstr_gdf = get_labels(gdf_sorted)
-    const_gdf = raster_to_polygon(L1_CONSTR, L1_CONSTR_SHP)
-    aggr_constr_gdf = aggr_constrained_shp(unconstr_gdf, const_gdf)
-    assert len(aggr_constr_gdf) == len(unconstr_gdf.labels.unique())
-
-def test_dissolve_admin_units(gdf):
+def test_dissolve_admin_units(poly):
     if L1_CONSTR_SHP.exists():
         [x.unlink() for x in BASE.iterdir() if x.stem == L1_CONSTR.stem if not x == L1_CONSTR]
     gdf_pop = join_population_to_shp(poly, TABLE)
@@ -171,4 +163,6 @@ def test_rasterize():
     units = list(np.unique(data[data != profile['nodata']]))
     assert len(gdf) == len(units)
     assert 0 in units
+
+
 

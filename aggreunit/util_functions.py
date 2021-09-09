@@ -152,28 +152,24 @@ def get_labels(gdf):
     """
     required_number_of_units = round(len(gdf.labels.unique()) - (len(gdf.labels.unique()) * 0.5))
     probs = 0
-    gdf_water = gdf[gdf.index == 0]
-    gdf = gdf[gdf.index != 0]
     for index, row in gdf.iterrows():
         if len(gdf.labels.unique()) <= required_number_of_units:
             print(f'{len(gdf.labels.unique())} admin units made. Finished')
             break
-        if gdf.loc[index, 'paired'] == False:
-            paired = False
-            neighbour_df = gdf[gdf.geometry.touches(row['geometry'])]
-            #isplay(neighbour_df)
-            for i, neighbour in neighbour_df.iterrows():
-                #Join up polygon with neighbour if not paired before
-                if gdf.at[i, 'paired'] == False:
-                    gdf.at[index, 'paired'] = True
-                    gdf.at[i, 'paired'] = True
-                    gdf.at[index, 'labels'] = index
-                    gdf.at[i, 'labels'] = index
-                    paired = True
-                    break
-    gdf_water['paired'] = True
-    gdf_water['lable'] = 0
-    gdf = gpd.GeoDataFrame(pd.concat([gdf, gdf_water]))
+        if not gdf.loc[index, 'labels'] == 0:
+            if gdf.loc[index, 'paired'] == False:
+                paired = False
+                neighbour_df = gdf[gdf.geometry.touches(row['geometry'])]
+                #isplay(neighbour_df)
+                for i, neighbour in neighbour_df.iterrows():
+                    #Join up polygon with neighbour if not paired before
+                    if gdf.at[i, 'paired'] == False:
+                        gdf.at[index, 'paired'] = True
+                        gdf.at[i, 'paired'] = True
+                        gdf.at[index, 'labels'] = index
+                        gdf.at[i, 'labels'] = index
+                        paired = True
+                        break
     return gdf
 
 def aggr_table(csv, gdf, out_csv, pop_col='P_2020', index_col='GID'):
