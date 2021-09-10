@@ -107,6 +107,7 @@ def test_aggr_table(poly):
     gdf_labelled = get_labels(gdf_sorted)
     aggr_table(TABLE, gdf_labelled, TABLE_AGGR)
     aggr_df = pd.read_csv(TABLE_AGGR)
+    assert pytest.approx(abs(gdf_labelled.P_2020.sum() - aggr_df.P_2020.sum()), 0)
     assert len(aggr_df) == len(gdf_labelled.labels.unique()) -1 #remove water rows
 
 

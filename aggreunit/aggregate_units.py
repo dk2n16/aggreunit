@@ -59,7 +59,7 @@ class AggregateUnits:
         gdf_sorted = aggreunit.sort_by_density(gdf_density)
         unconstr_gdf = aggreunit.get_labels(gdf_sorted)
         gdf_diss = aggreunit.dissolve_admin_units(unconstr_gdf)
-        aggreunit.aggr_table(self.population_table, gdf_diss, self.out_population_table, pop_col='B_Tot')
+        aggreunit.aggr_table(self.population_table, unconstr_gdf, self.out_population_table, pop_col='B_Tot')
         aggreunit.save_shapefile(gdf_diss, self.out_admin_shapefile)
         aggreunit.rasterize(gdf_diss,self.admin_raster, self.out_admin_raster)
 
