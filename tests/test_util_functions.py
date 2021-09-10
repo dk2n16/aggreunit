@@ -1,4 +1,3 @@
-from aggreunit.util_functions import dissolve_admin_units
 from pathlib import Path
 
 import geopandas as gpd
@@ -74,13 +73,13 @@ def test_join_population_to_shp_with_gdf():
 
 def test_get_pop_density(poly):
     gdf_pop = join_population_to_shp(poly, TABLE)
-    gdf_density = get_pop_density(gdf_pop, PIXEL, L1_SHP)
+    gdf_density = get_pop_density(gdf_pop, PIXEL, out_shp=L1_SHP)
     assert 'area' in gdf_density.columns
     assert 'density' in gdf_density.columns
 
 def test_sort_by_density(poly):
     gdf_pop = join_population_to_shp(poly, TABLE)
-    gdf_density = get_pop_density(gdf_pop, PIXEL, L1_SHP)
+    gdf_density = get_pop_density(gdf_pop, PIXEL, out_shp=L1_SHP)
     gdf_sorted = sort_by_density(gdf_density)
     gdf_sorted.to_file(L1_SHP.parent.joinpath('test.shp'))
     expected = sorted(gdf_density.density.to_list(), reverse=True)
@@ -94,7 +93,7 @@ def test_sort_by_density(poly):
 
 def test_get_labels(poly):
     gdf_pop = join_population_to_shp(poly, TABLE)
-    gdf_density = get_pop_density(gdf_pop, PIXEL, L1_SHP)
+    gdf_density = get_pop_density(gdf_pop, PIXEL, out_shp=L1_SHP)
     gdf_sorted = sort_by_density(gdf_density)
     gdf_labelled = get_labels(gdf_sorted)
     parent_poly_expected = 53351 #Most dense ID (manually checked)
@@ -103,7 +102,7 @@ def test_get_labels(poly):
 
 def test_aggr_table(poly):
     gdf_pop = join_population_to_shp(poly, TABLE)
-    gdf_density = get_pop_density(gdf_pop, PIXEL, L1_SHP)
+    gdf_density = get_pop_density(gdf_pop, PIXEL, out_shp=L1_SHP)
     gdf_sorted = sort_by_density(gdf_density)
     gdf_labelled = get_labels(gdf_sorted)
     aggr_table(TABLE, gdf_labelled, TABLE_AGGR)
@@ -115,7 +114,7 @@ def test_aggr_constrained_shp(poly):
     if L1_CONSTR_SHP.exists():
         [x.unlink() for x in BASE.iterdir() if x.stem == L1_CONSTR.stem if not x == L1_CONSTR]
     gdf_pop = join_population_to_shp(poly, TABLE)
-    gdf_density = get_pop_density(gdf_pop, PIXEL, L1_SHP)
+    gdf_density = get_pop_density(gdf_pop, PIXEL, out_shp=L1_SHP)
     gdf_sorted = sort_by_density(gdf_density)
     unconstr_gdf = get_labels(gdf_sorted)
     const_gdf = raster_to_polygon(L1_CONSTR, L1_CONSTR_SHP)
@@ -128,7 +127,7 @@ def test_dissolve_admin_units(poly):
     if L1_CONSTR_SHP.exists():
         [x.unlink() for x in BASE.iterdir() if x.stem == L1_CONSTR.stem if not x == L1_CONSTR]
     gdf_pop = join_population_to_shp(poly, TABLE)
-    gdf_density = get_pop_density(gdf_pop, PIXEL, L1_SHP)
+    gdf_density = get_pop_density(gdf_pop, PIXEL, out_shp=L1_SHP)
     gdf_sorted = sort_by_density(gdf_density)
     unconstr_gdf = get_labels(gdf_sorted)
     gdf_diss = dissolve_admin_units(unconstr_gdf)

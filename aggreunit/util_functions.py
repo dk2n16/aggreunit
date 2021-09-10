@@ -77,7 +77,7 @@ def join_population_to_shp(shp, csv, shp_id='adm_id', csv_id='GID', pop_col='P_2
     return gdf_pop
 
 #density to gdf
-def get_pop_density(shp, raster, out_shp, shp_index_col='adm_id', pop_col='P_2020'):
+def get_pop_density(shp, raster, out_shp=None, shp_index_col='adm_id', pop_col='P_2020'):
     """
     Returns Geodataframe of admin units with population density appended
 
@@ -114,7 +114,8 @@ def get_pop_density(shp, raster, out_shp, shp_index_col='adm_id', pop_col='P_202
     cols = [pop_col, 'area', 'density', 'geometry']
     gdf_density = gdf_density[cols]
     gdf_density = gdf_density.fillna(0)
-    gdf_density.to_file(out_shp)
+    if out_shp:
+        gdf_density.to_file(out_shp)
     return gdf_density
 
 def sort_by_density(gdf):
@@ -152,6 +153,8 @@ def get_labels(gdf):
     """
     required_number_of_units = round(len(gdf.labels.unique()) - (len(gdf.labels.unique()) * 0.5))
     probs = 0
+    gdf.loc[gdf.labels == 0, 'labels'] = 0
+    gdf.loc[gdf.labels == 0, 'paired'] = True
     for index, row in gdf.iterrows():
         if len(gdf.labels.unique()) <= required_number_of_units:
             print(f'{len(gdf.labels.unique())} admin units made. Finished')
